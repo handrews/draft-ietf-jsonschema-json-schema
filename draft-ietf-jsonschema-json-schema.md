@@ -128,8 +128,8 @@ the topic of the chapter.
 * Implementors will need to understand the requirements in sections 3 through 10 but also
 the requirements on loading and processing schemas ({{loading-and-processing}}),
 keyword behaviors ({{keyword-behaviors}}), and formatted output ({{output}}).
-Refer to the appendix on annotations ({{annotations-appendix}}) for additional
-guidance on approaches to implementing annotations.
+Refer to the appendix on keyword dependency implementation ({{impl-deps}}) for additional
+guidance on approaches to implementing keyword dependencies.
 
 * Authors of meta-schemas including extensions to JSON Schema will want to read
 the chapter on {{extensibility}} and {{vocabularies-appendix}}.
@@ -163,10 +163,6 @@ defined, and the annotation process can be disabled as a performance or
 resource consumption optimization.
 
 Output annotations might only be "as true as" the input, and useful only for select inputs. For example, annotations may only meaningfully describe inputs with a particular "profile" link relation, or in some particular context. In any event, annotations never describe violations (rejected inputs).
-
-The interface to access annotations may be highly configurable depending on the implementation, in such ways as limiting output to certain annotation keywords, aggregating values together, or other features to enhance performance. Annotation output may be bypassed entirely.
-
-Annotations may be presented as a set, or as a stream of events, however if the input is rejected during processing, this voids all annotations previously emitted from that input.
 
 ### Internet media types
 
@@ -563,7 +559,7 @@ for vocabularies that they do not support directly.  The exact mechanism
 for registering and implementing such handlers is implementation-dependent.
 
 
-### Validation
+### Validation and Annotation
 
 JSON Schema validation applies the rules of a JSON Schema to determine
 if an input is in the valid set for that schema.
@@ -584,6 +580,10 @@ useful information.  The {{format-vocab}} keyword is intended primarily
 as an annotation, but can optionally be used as an assertion.  The
 {{content}} keywords are annotations for working with documents
 embedded as JSON strings.
+
+The interface to access annotations MAY be highly configurable depending on the implementation, in such ways as limiting output to certain annotation keywords, aggregating values together, or other features to enhance performance. Annotation output MAY be bypassed entirely.
+
+Annotations MAY be presented as a set, or as a stream of events, however if the input is rejected during processing, this voids all annotations previously emitted from that input.
 
 # Core Keywords {#core-keywords}
 
@@ -1055,10 +1055,12 @@ possibly the briefest is
 
 This keyword's value MUST be a valid JSON Schema.
 
+Validation MUST always succeed against this keyword
+regardless of the validation outcome of it subschema.
+
 This validation outcome of this keyword's subschema
-has no direct effect on the overall validation
-result.  Rather, it controls which of the "then"
-or "else" keywords are evaluated.
+controls which of the "then" or "else" keywords are
+evaluated, but otherwise MUST be disregarded.
 
 Inputs that successfully validate against this
 keyword's subschema MUST also be valid against
@@ -1158,11 +1160,6 @@ does not constrain the length of the array.  If the array is longer
 than this keyword's value, this keyword validates only the
 prefix of matching length.
 
-This keyword produces an annotation value which is the largest
-index to which this keyword applied a subschema.  The value
-MAY be a boolean true if a subschema was applied to every
-index of the instance, such as is produced by the "items" keyword.
-
 Omitting this keyword has the same assertion behavior as
 an empty array.
 
@@ -1174,11 +1171,6 @@ This keyword applies its subschema to all input elements
 at indexes greater than the length of the "prefixItems" array
 in the same schema object.  If `prefixItems` is not present,
 "items" applies its subschema to all input array elements.
-
-If the "items" subschema is applied to any
-positions within the input array, it produces an
-annotation result of boolean true, indicating that all remaining array
-elements have been evaluated against this keyword's subschema.
 
 Omitting this keyword has the same assertion behavior as
 an empty schema.
@@ -1200,13 +1192,6 @@ The minimum and maximum numbers of occurrences are provided by the
 same schema object as "contains".  If "minContains" is absent, the
 minimum MUST be 1.  If "maxContains" is absent, the maximum MUST
 be unbounded.
-
-This keyword produces an annotation value which is an array of
-the indexes to which this keyword validates successfully when applying
-its subschema, in ascending order. The value MAY be a boolean "true" if
-the subschema validates successfully when applied to every index of the
-instance. The annotation MUST be present if the input array to which
-this keyword's schema applies is empty.
 
 The subschema MUST be applied to every array element even after the first
 match has been found, if annotations are being collected.
@@ -1230,9 +1215,6 @@ Validation succeeds if, for each name that appears in both
 the input and as a name within this keyword's value,
 the contents successfully validate against the
 corresponding schema.
-
-The annotation result of this keyword is the set of instance
-property names matched by this keyword.
 
 Omitting this keyword has the same assertion behavior as
 an empty object.
@@ -1258,9 +1240,6 @@ match regular expressions in "patternProperties".
 For all such properties, validation succeeds if the contents
 validate against the "additionalProperties" schema.
 
-The annotation result of this keyword is the set of input
-property names validated by this keyword's subschema.
-
 Omitting this keyword has the same assertion behavior as
 an empty schema.
 
@@ -1285,9 +1264,6 @@ regular expressions that appear as a property name in this keyword's value,
 the contents successfully validate against each
 schema that corresponds to a matching regular expression.
 Recall: Regular expressions are not explicitly anchored.
-
-The annotation result of this keyword is the set of instance
-property names matched by this keyword.
 
 Omitting this keyword has the same assertion behavior as
 an empty object.
@@ -1321,25 +1297,8 @@ roles for an incident response process, but no undefined roles.
 
 The purpose of these keywords is to enable schema authors to apply
 subschemas to array items or object properties that have not been
-successfully evaluated against any dynamic-scope subschema of any
-adjacent keywords.
-
-These input items or properties may have been unsuccessfully evaluated
-against one or more adjacent keyword subschemas, such as when an assertion
-in a branch of an "anyOf" fails.  Such failed evaluations are not considered
-to contribute to whether or not the item or property has been evaluated.
-Only successful evaluations are considered.
-
-If an item in an array or an object property is "successfully evaluated", it
-is logically considered to be valid in terms of the representation of the
-object or array that's expected. For example if a subschema represents a car,
-which requires between 2-4 wheels, and the value of "wheels" is 6, the input
-object is not "evaluated" to be a car, and the "wheels" property is considered
-"unevaluated (successfully as a known thing)", and does not retain any annotations.
-
-Recall that adjacent keywords are keywords within the same schema object,
-and that the dynamic-scope subschemas include reference targets as well as
-lexical subschemas.
+successfully evaluated within the current schema evaluation or any of its
+successful sub-evaluations (see {{eval-status}}).
 
 Meta-schemas that do not use "$vocabulary" SHOULD be considered to
 require this vocabulary as if its URI were present with a value of true.
@@ -1368,31 +1327,22 @@ vocabulary are notable exceptions:
 
 The value of "unevaluatedItems" MUST be a valid JSON Schema.
 
-The behavior of this keyword depends on adjacent keywords "prefixItems", "items", and "contains".
-If those keywords do not limit the application of "unevaluatedItems",
-the "unevaluatedItems" subschema MUST be applied to all locations in the array.
+The "unevalutedItems" subschema MUST be applied only to those
+items that were *not* evaluated by "prefixItems", "items", or
+"contains" in the current schema evaluation or a successful
+sub-evaluation, or by "unevaluatedItems" in a successful
+sub-evaluation.
 
-Defined in terms of annotations, if the annotation output of "prefixItems",
-"items" or "contains"  is a boolean 'true', then "unevaluatedItems" MUST be ignored.
-Otherwise, the subschema
-MUST be applied to any index greater than the largest annotation
-value for "prefixItems" and "items", which does not appear in any annotation
-value for "contains".  Thus,
-"prefixItems", "items", "contains", and all in-place
-applicators MUST be evaluated before this keyword can be evaluated.
-Authors of extension keywords MUST NOT define an in-place applicator
-that would need to be evaluated after this keyword.
-
-If the "unevaluatedItems" subschema is applied to any
-positions within the input array, it produces an
-annotation result of boolean true, analogous to the
-behavior of "items".
+This means that "prefixItems", "items", "contains",
+and all in-place applicators MUST be evaluated before this keyword can
+be evaluated.  Authors of extension keywords MUST NOT define an in-place
+applicator that would need to be evaluated after this keyword.
 
 Omitting this keyword has the same assertion behavior as
 an empty schema.
 
 The `unevaluatedItems` keyword can be very similar to the `items` keyword in
-some examples, like the example in {{annotations-appendix}} where `prefixItems`
+some examples, like the example in {{impl-deps}} where `prefixItems`
 is used to define exactly three items in a list and further items are forbidden,
 and in that example `unevaluatedItems` could replace `items`.  Here's an example
 where `unevaluatedItems` is doing work that could not be done by `items`, constraining
@@ -1409,25 +1359,17 @@ would fail on `unevaluatedItems` because the string was not evaluated by the
 
 The value of "unevaluatedProperties" MUST be a valid JSON Schema.
 
-The behavior of this keyword depends on adjacent keywords "properties", "patternProperties",
-and "additionalProperties".
-
-Validation with "unevaluatedProperties" applies only to the child
-values of input names that do not appear in the "properties",
-"patternProperties", "additionalProperties", or
-"unevaluatedProperties" annotation results that apply to the instance
-location being validated.
-
-For all such properties, validation succeeds if the contents
-validate against the "unevaluatedProperties" schema.
+The "unevalutedItems" subschema MUST be applied only to those
+properties that were *not* evaluated by "properties",
+"patternProperties", or "additionalProperties"
+in the current schema evaluation or a successful
+sub-evaluation, or by "unevaluatedProperties" in a successful
+sub-evaluation.
 
 This means that "properties", "patternProperties", "additionalProperties",
 and all in-place applicators MUST be evaluated before this keyword can
 be evaluated.  Authors of extension keywords MUST NOT define an in-place
 applicator that would need to be evaluated after this keyword.
-
-The annotation result of this keyword is the set of instance
-property names validated by this keyword's subschema.
 
 Omitting this keyword has the same assertion behavior as
 an empty schema.
@@ -2846,9 +2788,7 @@ A keyword MAY depend on the value or outcome of other keywords
 within the same dynamic scopes or its successful subscopes.
 
 No constraints are placed on the mechanism of communication
-within implementations, however, annotations MAY be used for
-this purpose, and all dependencies within this specification
-define annotations necessary for this.
+within implementations.
 
 Interactions within the same dynamic scope that depend only
 on adjacent keyword values SHOULD be determined statically.
@@ -2879,19 +2819,6 @@ identical to that produced by a certain value, and keyword definitions
 SHOULD note such values where known.  However, even if the value which
 produces the default behavior would produce annotation results if
 present, the default behavior still MUST NOT result in annotations.
-
-Because annotation collection can add significant cost in terms of both
-computation and memory, implementations MAY opt out of this feature.
-Keywords that are specified in terms of collected annotations SHOULD
-describe reasonable alternate approaches when appropriate.
-This approach is demonstrated by the
-{{<<items}} and
-{{<<additionalProperties}} keywords in this
-document.
-
-Note that when no such alternate approach is possible for a keyword,
-implementations that do not support annotation collections will not
-be able to support those keywords or vocabularies that contain them.
 
 ## Handling unrecognized or unsupported keywords {#unrecognized}
 
@@ -2936,19 +2863,9 @@ keyword.
 Applicator keywords also define how subschema or referenced schema
 boolean [assertion](#assertions)
 results are modified and/or combined to produce the boolean result
-of the applicator.  Applicators may apply any boolean logic operation
+of the applicator.  Applicators MAY apply any boolean logic operation
 to the assertion results of subschemas, but MUST NOT introduce new
 assertion conditions of their own.
-
-[Annotation](#annotations) results from subschemas
-are preserved in accordance with {{collect}}
-so that applications can decide how to interpret multiple values.
-Applicator keywords do not play a direct role in this preservation.
-
-Annotation results
-are preserved along with the instance location and the location of
-the schema keyword, so that applications can decide how to
-interpret multiple values.
 
 ### Referenced and Referencing Schemas
 
@@ -3019,8 +2936,8 @@ then including "null" in "type" would not have any useful effect.
 
 JSON Schema can annotate an instance with information, whenever the instance
 validates against the schema object containing the annotation, and all of its
-parent schema objects.  The information can be a simple value, or can be
-calculated based on the instance contents.
+parent schema objects.  The annotation value produced by each annotation
+keyword MUST be the keyword's value.
 
 Annotations are attached to specific locations in an instance.
 Since many subschemas can be applied to any single
@@ -3033,11 +2950,13 @@ which are provided to applications to use as they see fit.  JSON Schema
 implementations are not expected to make use of the collected information
 on behalf of applications.
 
-Unless otherwise specified, the value of an annotation keyword
-is the keyword's value.  However, other behaviors are possible.
-For example, JSON Hyper-Schema's ({{?I-D.handrews-json-schema-hyperschema}})
-"links" keyword is a complex annotation that produces a value based
-in part on the instance data.
+Designers of annotation keywords SHOULD specify the annotation's semantics
+sufficiently clearly for downstream consumers of JSON Schema output
+to implement them.  These semantics can be very precise (such as
+the "content\*" annotations in section {{content}}), or sufficiently
+general as to support a wide range of use cases (such as "title" or
+"description").  However, implementation of annotation semantics is
+outside of the scope of JSON Schema.
 
 While "short-circuit" evaluation is possible for assertions, collecting
 annotations requires examining all schemas that apply to an instance
@@ -3052,6 +2971,10 @@ Annotations are collected by keywords that explicitly define
 annotation-collecting behavior.  Note that boolean schemas cannot
 produce annotations as they do not make use of keywords.
 
+See {{eval-status}} for conditions under which annotations
+appear in output, and how they are managed throughout the
+evaluation process.
+
 A collected annotation MUST include the following information:
 
 * The name of the keyword that produces the annotation
@@ -3061,7 +2984,7 @@ A collected annotation MUST include the following information:
 * The absolute schema location of the attaching keyword, as a URI.
   This MAY be omitted if it is the same as the schema location path
   from above.
-* The attached value(s)
+* The attached value
 
 #### Distinguishing Among Multiple Values
 
@@ -3143,7 +3066,7 @@ schema locations.
 
 ## Reserved Locations
 
-A fourth category of keywords simply reserve a location to hold re-usable
+A final category of keywords simply reserve a location to hold re-usable
 components or data of interest to schema authors that is not suitable
 for re-use.  These keywords do not affect validation or annotation results.
 Their purpose in the core vocabulary is to ensure that locations are
@@ -3257,8 +3180,10 @@ The error or annotation that is produced by the validation.
 For errors, the specific wording for the message is not defined by this
 specification.  Implementations will need to provide this.
 
-For annotations, each keyword that produces an annotation specifies its
-format.  By default, it is the keyword's value.
+For annotations, the annotation is the keyword's value.  Any additional
+implementation requirements based on the value's semantics are outside
+of the scope of this specification, and are expected to be implemented
+by code that consumes JSON Schema output.
 
 The JSON key for failed validations is "error"; for successful validations
 it is "annotation".
@@ -3974,14 +3899,21 @@ which tell us how to resolve the dynamic reference, not any sort of
 correlation in JSON structure.
 
 
-# Using annotations in implementations {#annotations-appendix}
+# Implementing keyword dependencies {#impl-deps}
 
-Annotations gathered while evaluating some keywords can be used to
-simplify the logic of evaluating other dependent keywords.  Whether
-annotations are used in keyword evaluation or not, the implementor must make sure that
-results are identical.  Thus, this section is OPTIONAL.
+This section is informative.
 
-As an example, the `properties` keyword produces annotations which can be used
+As noted in {{keyword-interactions}}, some keywords depend on the value
+or successful evaluation outcome of other keywords within the same
+schema evaluation or any of its successful sub-evaluations.
+
+This specification does not impose requirements on exactly how such
+dependencies are communicated, save for noting that the conditions
+under which dependency information is produced, discarded, or ignored
+mirror those of annotations.
+
+As an example, the `properties` keyword produces information about
+which properties were successfully evaluated, which is used
 in the implementation of `additionalProperties`, `required` and
 `unevaluatedProperties`.  With this schema:
 
@@ -3989,19 +3921,20 @@ in the implementation of `additionalProperties`, `required` and
 {::include ./examples/point.json}
 ~~~~~~~~~~
 
-The following table shows the annotation result of `properties` for
-three different inputs, and how `additionalProperties` and `required`
+The following table shows the information produced by `properties` for
+three different inputs, and how `additionalProperties`
 implementations could use that result.
 
-| Input | "properties" annotation | "additionalProperties" result | "required" result |
+| Input | "properties" property names | "additionalProperties" result |
 |---|---|---|---|
-| `{"X": 1, "Y": 2}` | `["X", "Y"]` | valid | valid |
-| `{"X": 1, "Y": 2, "radius": 5}` | `["X", "Y"]` | invalid (`"radius"` not in annotation) | valid |
-| `{"X": 1}` | `["X"]` | valid | invalid (`"Y"` absent) |
+| `{"X": 1, "Y": 2}` | "X", "Y" | valid |
+| `{"X": 1, "Y": 2, "radius": 5}` | "X", "Y" | invalid (`"radius"` not in set) |
 
-Similarly, the `prefixItems` keyword produces an annotation which is
-used by `items` and `unevaluatedItems`.  The annotation value is the
-largest index to which `prefixItems` applied a subschema.  Consider
+Similarly, the `prefixItems` keyword produces information which is
+used by `items` and `unevaluatedItems`.  The information is the indexes
+to which `prefixItems` applied as a subschema, which we'll show as
+a range (its exact representation is purely internal and therefore
+implementation-defined).  Consider
 this schema for a structured log entry with a timestamp, action, and
 username fields, and preventing additional fields:
 
@@ -4014,26 +3947,32 @@ annotation output from `prefixItems` evaluation. Then,
 `items` uses the `prefixItems` annotation to start where `prefixItems`
 left off, applying only to indices greater than the annotation value.
 
-| Input | "prefixItems" annotation | "items" result |
+| Input | "prefixItems" index ranges | "items" result |
 |---|---|---|
-| `["2026-06-24T10:00:00Z", "created", "alice"]` | `2` | valid (no elements beyond index 2) |
-  | `["2026-06-24T10:00:00Z", "created", "alice", "extra"]` | `2` | invalid (index 3 not evaluated by `prefixItems`) |
-| `["2026-06-24T10:00:00Z", "created"]` | `1` | valid (no elements beyond index 1) |
+| `["2026-06-24T10:00:00Z", "created", "alice"]` | 0–2 | valid (no elements beyond index 2) |
+  | `["2026-06-24T10:00:00Z", "created", "alice", "extra"]` | 0–2 | invalid (index 3 not evaluated by `prefixItems`) |
+| `["2026-06-24T10:00:00Z", "created"]` | 0–1 | valid (no elements beyond index 1) |
 | `[]` | *(none)* | valid (no elements at all) |
 
-The following table summarizes which keywords produce annotations
-that can be used in the implementation of other keywords:
+The following table summarizes which, when successful, produce
+information on which other keywords depend:
 
-| Keyword | Annotation value | Used by |
+| Keyword | Information | Depended on by |
 |---|---|---|
-| `properties` | set of matched property names | `additionalProperties`, `unevaluatedProperties` |
-| `patternProperties` | set of matched property names | `additionalProperties`, `unevaluatedProperties` |
-| `additionalProperties` | set of validated property names | `unevaluatedProperties` |
-| `prefixItems` | largest index evaluated, or `true` | `items`, `unevaluatedItems` |
-| `items` | `true` if any elements evaluated | `unevaluatedItems` |
-| `contains` | array of evaluated indices, or `true` | `unevaluatedItems` |
-| `unevaluatedItems` | `true` if any elements evaluated | `unevaluatedItems` in parent schemas |
-| `unevaluatedProperties` | set of validated property names | `unevaluatedProperties` in parent schemas |
+| `properties` | set of validated property names | `additionalProperties`, `unevaluatedProperties` |
+| `patternProperties` | set of validated property names | `additionalProperties`, `unevaluatedProperties` |
+| `additionalProperties` | all properties have been validated | `unevaluatedProperties` |
+| `prefixItems` | validated index ranges | `items`, `unevaluatedItems` |
+| `items` | all indices have been validated | `unevaluatedItems` |
+| `contains` | validated index ranges | `unevaluatedItems` |
+| `minContains` | keyword value | `contains` |
+| `maxContains` | keyword value | `contains` |
+| `unevaluatedItems` | all indices have been validated | `unevaluatedItems` in parent schemas |
+| `unevaluatedProperties` | all properties have been validated | `unevaluatedProperties` in parent schemas |
+
+Note that certain keywords always validate all remaining properties
+or indices when successful, so there is no need for them to track
+individual locations.
 
 # Working with vocabularies {#vocabularies-appendix}
 
