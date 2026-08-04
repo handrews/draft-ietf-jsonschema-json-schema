@@ -164,10 +164,6 @@ resource consumption optimization.
 
 Output annotations might only be "as true as" the input, and useful only for select inputs. For example, annotations may only meaningfully describe inputs with a particular "profile" link relation, or in some particular context. In any event, annotations never describe violations (rejected inputs).
 
-The interface to access annotations may be highly configurable depending on the implementation, in such ways as limiting output to certain annotation keywords, aggregating values together, or other features to enhance performance. Annotation output may be bypassed entirely.
-
-Annotations may be presented as a set, or as a stream of events, however if the input is rejected during processing, this voids all annotations previously emitted from that input.
-
 ### Internet media types
 
 The specification
@@ -563,7 +559,7 @@ for vocabularies that they do not support directly.  The exact mechanism
 for registering and implementing such handlers is implementation-dependent.
 
 
-### Validation
+### Validation and Annotation
 
 JSON Schema validation applies the rules of a JSON Schema to determine
 if an input is in the valid set for that schema.
@@ -584,6 +580,13 @@ useful information.  The {{format-vocab}} keyword is intended primarily
 as an annotation, but can optionally be used as an assertion.  The
 {{content}} keywords are annotations for working with documents
 embedded as JSON strings.
+
+Implementations MAY allow configuring annotations
+in such ways as limiting output to certain annotation keywords, aggregating values together, or other features to enhance performance.
+Implementations MAY allow annotation output to be bypassed entirely.
+
+Annotations MAY be presented as a single data structure, or as a stream of events, however if the input is rejected during processing, this voids all annotations previously emitted from that input.
+See {{eval-status}} for detailed guidance on when previously emitted annotations MUST be discarded.
 
 # Core Keywords {#core-keywords}
 
