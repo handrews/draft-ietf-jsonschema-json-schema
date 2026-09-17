@@ -74,12 +74,6 @@ normative:
     seriesinfo:
       W3C Recommendation: REC-xml-names-20091208
 
-informative:
-  HYPERSCHEMA-METASCHEMA:
-    title: "Hyper-Schema Meta-Schema"
-    target: https://json-schema.org/draft/2020-12/hyper-schema
-    date: 2020-12
-
 --- abstract
 
 JSON Schema defines the media type "application/schema+json", a JSON-based format
@@ -888,8 +882,7 @@ Otherwise, its behavior is identical to "$ref", and no runtime
 resolution is needed.
 
 For an example of `$ref`, see the example of `$anchor` above in {{anchor-example}}.
-For an example of `$dynamicRef`, see {{recursive-example}}.  A practical
-example can also be found in the JSON Hyper-Schema meta-schema {{HYPERSCHEMA-METASCHEMA}}.
+For an example of `$dynamicRef`, see {{recursive-example}}.
 
 ### "$defs" {#defs}
 
@@ -1677,7 +1670,7 @@ format attribute can generally only validate a given set of input types. If
 the type of the input is not in this set, validation for this
 format attribute and input SHOULD succeed.  All format attributes defined
 in this section apply to strings, but a format attribute can be specified
-to apply to any input type in the [input data model](#input).
+to apply to any input type in the [input data model](#input).[^14]
 
 The current URI for this vocabulary, known as the Format-Annotation vocabulary, is:
 
@@ -1719,7 +1712,7 @@ Implementations MAY still treat "format" as an assertion in addition to an
 annotation and attempt to validate the value's conformance to the specified
 semantics. The implementation MUST provide options to enable and disable such
 evaluation and MUST be disabled by default. Implementations SHOULD document
-their level of support for such validation.
+their level of support for such validation.[^15]
 
 When the implementation is configured for assertion behavior, it:
 
@@ -1727,12 +1720,6 @@ When the implementation is configured for assertion behavior, it:
   for each format attribute defined below;
 * MAY choose to implement validation of any or all format attributes
   as a no-op by always producing a validation result of true;
-
-This matches the current reality of implementations, which provide
-widely varying levels of validation, including no validation at all,
-for some or all format attributes.  It is also designed to encourage
-relying only on the annotation behavior and performing semantic
-validation in the application, which is the recommended best practice.
 
 ### Format-Assertion Vocabulary
 
@@ -1746,21 +1733,17 @@ An implementation that supports the Format-Assertion vocabulary:
 * MUST still produce "format" as an annotation if the implementation
   supports annotation production;
 * MUST evaluate "format" as an assertion;
-* MUST implement *some* syntactic validation for all format attributes defined
+* MUST implement syntactic validation for all format attributes defined
   in this specification, and for any additional format attributes that
-  it recognizes
+  it recognizes, such that there exist possible input values
+  of the correct type that will fail validation.
 
-The requirement for "some" validation of format attributes is intentionally
+The requirement for minimal validation of format attributes is intentionally
 vague and permissive, due to the complexity involved in many of the attributes.
-For example, email addresses should technically not have '..' (two dots in a row)
-but naive email address utilities may miss this.  Perfect validation may
-be prohibitively complicated; consider URL values with the `data` schema that
-are technically invalid if the payload, once decoded, doesn't fully match the media type.
-
-Implementations SHOULD NOT go beyond syntactic checking.  The user of a validator
-would not expect it to send an email, attempt to connect
+Note in particular that the requirement is limited to syntactic checking; it is
+not to be expected that an implementation would send an email, attempt to connect
 to a URL, or otherwise check the existence of an entity identified by a format
-instance, and doing that kind of checking could introduce security and privacy risks.
+instance.[^17]
 
 It is RECOMMENDED that implementations use a common parsing library for each format,
 or a well-known regular expression.  Implementations SHOULD clearly document
@@ -1832,7 +1815,7 @@ are implemented, the corresponding short form ("date" or "time"
 respectively) MUST be implemented, and MUST behave identically.
 Implementations SHOULD NOT define extension attributes
 with any name matching an RFC 3339 format unless it validates
-according to the rules of that format.
+according to the rules of that format.[^18]
 
 ### Email Addresses
 
@@ -2707,7 +2690,7 @@ is undefined.  Similarly, a reference target under a known keyword,
 for which the value is known not to be a schema, results in undefined
 behavior in order to avoid burdening implementations with the need
 to detect such targets.  See {{security}} for the security implications
-of interpreting such targets as schemas anyway.
+of blindly interpreting targets as schemas.
 
 Note that single-level custom keywords with identical syntax and
 semantics to "$defs" do not allow for any intervening "$id" keywords,
@@ -4329,4 +4312,33 @@ Compared to the "2020-12" version of JSON Schema, this draft makes the following
 * Shift terminology to a terminology section
 * Reorder conceptually: intro, keywords, processing and output, extensibility.
 * Define input and instance as different things.
+
+[^14]: Note that the "type" keyword in this specification defines an "integer" type
+       which is not part of the data model. Therefore a format attribute can be
+       limited to numbers, but not specifically to integers. However, a numeric
+       format can be used alongside the "type" keyword with a value of "integer",
+       or could be explicitly defined to always pass if the number is not an integer,
+       which produces essentially the same behavior as only applying to integers.
+
+[^15]: Specifying the Format-Annotation vocabulary and enabling validation in an
+       implementation should not be viewed as being equivalent to specifying
+       the Format-Assertion vocabulary since implementations are not required to
+       provide full validation support when the Format-Assertion vocabulary
+       is not specified.
+
+[^17]: The expectation is that for simple formats such as date-time, syntactic
+       validation will be thorough.  For a complex format such as email addresses,
+       which are the amalgamation of various standards and numerous adjustments
+       over time, with obscure and/or obsolete rules that may or may not be
+       restricted by other applications making use of the value, a minimal validation
+       is sufficient.  For example, an input string that does not contain
+       an "@" is clearly not a valid email address, and an "email" or "hostname"
+       containing characters outside of 7-bit ASCII is likewise clearly invalid.
+
+[^18]: There is not currently consensus on the need for supporting
+       all RFC 3339 formats, so this approach of reserving the
+       namespace will encourage experimentation without committing
+       to the entire set.  Either the format implementation requirements
+       will become more flexible in general, or these will likely
+       either be promoted to fully specified attributes or dropped.
 
