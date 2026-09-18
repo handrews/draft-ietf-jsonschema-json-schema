@@ -1,0 +1,4 @@
+{
+    "type": ["string", "null"],
+    "maxLength": 255
+}

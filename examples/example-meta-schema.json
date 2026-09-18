@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/meta/general-use-example",
+  "$dynamicAnchor": "meta",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true,
+    "https://example.com/vocab/example-vocab": true
+  },
+  "allOf": [
+    {"$ref": "https://json-schema.org/draft/2020-12/meta/core"},
+    {"$ref": "https://json-schema.org/draft/2020-12/meta/applicator"},
+    {"$ref": "https://json-schema.org/draft/2020-12/meta/validation"},
+    {"$ref": "https://example.com/meta/example-vocab"}
+  ],
+  "patternProperties": {
+    "^unevaluated": false
+  },
+  "properties": {
+    "localKeyword": {
+      "$comment": "Not in vocabulary, but validated if used",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "$id": "https://example.com/foo",
+  "items": {
+    "$ref": "bar"
+  }
+}

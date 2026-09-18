@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/meta/example-vocab",
+  "$dynamicAnchor": "meta",
+  "$vocabulary": {
+    "https://example.com/vocab/example-vocab": true
+  },
+  "type": ["object", "boolean"],
+  "properties": {
+    "minDate": {
+      "type": "string",
+      "pattern": "^\\d\\d\\d\\d-\\d\\d-\\d\\d$",
+      "format": "date"
+    }
+  }
+}

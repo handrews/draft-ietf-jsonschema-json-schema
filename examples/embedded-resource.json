@@ -1,0 +1,7 @@
+{
+  "$id": "https://example.com/foo",
+  "items": {
+    "$id": "https://example.com/bar",
+    "additionalProperties": { }
+  }
+}

@@ -394,14 +394,9 @@ URI is determined as described in {{initial-base}}.
 
 Some keywords take schemas themselves, allowing JSON Schemas to be nested:
 
-~~~ json
-{
-    "title": "root",
-    "items": {
-        "title": "array item"
-    }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/root-and-subschema.json}
+~~~~~~~~~~
 
 In this example document, the schema titled "array item" is a subschema,
 and the schema titled "root" is the root schema.
@@ -1056,13 +1051,9 @@ two properties could either be present or both absent
 but not appear at the same time, this can be expressed in many ways but
 possibly the briefest is
 
-~~~ json
-  {
-    "not": {
-      "required": ["approved_date", "rejected_date"]
-    }
-  }
-~~~
+~~~~~~~~~~
+{::include ./examples/not-mutually-exclusive.json}
+~~~~~~~~~~
 
 ### "if"
 
@@ -2060,25 +2051,18 @@ The value of this property MUST be a valid JSON schema. It SHOULD be ignored if
 Here is an example schema, illustrating the use of "contentEncoding" and
 "contentMediaType":
 
-~~~ json
-{
-    "type": "string",
-    "contentEncoding": "base64",
-    "contentMediaType": "image/png"
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/content-base64-png.json}
+~~~~~~~~~~
 
 Instances described by this schema are expected to be strings,
 and their values should be interpretable as base64-encoded PNG images.
 
 Another example:
 
-~~~ json
-{
-    "type": "string",
-    "contentMediaType": "text/html"
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/content-html.json}
+~~~~~~~~~~
 
 Instances described by this schema are expected to be strings containing HTML,
 using whatever character set the JSON string was decoded into.
@@ -2088,32 +2072,9 @@ system, this MUST be UTF-8.
 This example describes a JWT that is MACed using the HMAC SHA-256
 algorithm, and requires the "iss" and "exp" fields in its claim set.
 
-~~~ json
-{
-    "type": "string",
-    "contentMediaType": "application/jwt",
-    "contentSchema": {
-        "type": "array",
-        "minItems": 2,
-        "prefixItems": [
-            {
-                "const": {
-                    "typ": "JWT",
-                    "alg": "HS256"
-                }
-            },
-            {
-                "type": "object",
-                "required": ["iss", "exp"],
-                "properties": {
-                    "iss": {"type": "string"},
-                    "exp": {"type": "integer"}
-                }
-            }
-        ]
-    }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/content-jwt.json}
+~~~~~~~~~~
 
 Note that "contentEncoding" does not appear.  While the "application/jwt"
 media type makes use of base64url encoding, that is defined by the media
@@ -2278,22 +2239,9 @@ JSON representations of resources, "username" is a field meant for display
 and cannot be changed, while "password" cannot be retrieved for display
 but can be set to a new value.
 
-~~~ json
-{
-  "$id": "https://example.com/schema",
-  "type": "object",
-  "properties": {
-    "username": {
-      "type": "string",
-      "readOnly": true
-    },
-    "password": {
-      "type": "string",
-      "writeOnly": true
-    }
-  }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/readonly-writeonly.json}
+~~~~~~~~~~
 
 When the above schema evaluates the following input:
 
@@ -2457,22 +2405,9 @@ then that schema SHOULD be used automatically.
 
 For example, consider this schema:
 
-~~~ json
-{
-    "$id": "https://example.net/root.json",
-    "items": {
-        "type": "array",
-        "items": { "$ref": "#item" }
-    },
-    "$defs": {
-        "single": {
-            "$anchor": "item",
-            "type": "object",
-            "additionalProperties": { "$ref": "other.json" }
-        }
-    }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/dereferencing-example.json}
+~~~~~~~~~~
 
 In this example, when an implementation encounters the &lt;#/$defs/single&gt; schema,
 it resolves the "$anchor" value as a fragment name against the current
@@ -2534,15 +2469,9 @@ locations within them.
 Consider the following schema document that contains another
 schema resource embedded within it:
 
-~~~ json
-{
-  "$id": "https://example.com/foo",
-  "items": {
-    "$id": "https://example.com/bar",
-    "additionalProperties": { }
-  }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/embedded-resource.json}
+~~~~~~~~~~
 
 The URI "https://example.com/foo#/items" points to the "items" schema,
 which is an embedded resource.  The canonical URI of that schema
@@ -2556,21 +2485,13 @@ canonical URI is "https://example.com/bar#/additionalProperties".
 Now consider the following two schema resources linked by reference
 using a URI value for "$ref":
 
-~~~ json
-{
-  "$id": "https://example.com/foo",
-  "items": {
-    "$ref": "bar"
-  }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/split-resource-foo.json}
+~~~~~~~~~~
 
-~~~ json
-{
-  "$id": "https://example.com/bar",
-  "additionalProperties": { }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/split-resource-bar.json}
+~~~~~~~~~~
 
 Here we see that "https://example.com/bar#/additionalProperties",
 using a JSON Pointer fragment appended to the canonical URI of
@@ -3010,12 +2931,9 @@ restrict the input to one or more primitive types.  This allows
 for a concise expression of use cases such as a function that might
 return either a string of a certain length or a null value:
 
-~~~ json
-{
-    "type": ["string", "null"],
-    "maxLength": 255
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/type-string-or-null.json}
+~~~~~~~~~~
 
 If "maxLength" also restricted the input type to be a string,
 then this would be substantially more cumbersome to express because
@@ -3388,17 +3306,9 @@ here for brevity.  The URI of the full output structure of the example above is:
 
 schema:
 
-~~~ json
-{
-  "$id": "https://example.com/polygon",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "validProp": true
-  },
-  "additionalProperties": false
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/verbose-output-schema.json}
+~~~~~~~~~~
 
 input:
 
@@ -3706,27 +3616,9 @@ Consider the following schema, which shows "$id" being used to identify
 both the root schema and various subschemas, and "$anchor" being used
 to define plain name fragment identifiers.
 
-~~~ json
-{
-    "$id": "https://example.com/root.json",
-    "$defs": {
-        "A": { "$anchor": "foo" },
-        "B": {
-            "$id": "other.json",
-            "$defs": {
-                "X": { "$anchor": "bar" },
-                "Y": {
-                    "$id": "t/inner.json",
-                    "$anchor": "bar"
-                }
-            }
-        },
-        "C": {
-            "$id": "urn:uuid:ee564b8a-7a87-4125-8c96-e9f123d6766f"
-        }
-    }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/id-examples-schema.json}
+~~~~~~~~~~
 
 The schemas at the following URI-encoded JSON
 Pointers ({{!RFC6901}}, relative to the root schema) have the following
@@ -3820,37 +3712,15 @@ An example input with "data" misspelled as "daat" is also shown.
 
 tree schema, extensible:
 
-~~~ json
-{
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://example.com/tree",
-    "$dynamicAnchor": "node",
-
-    "type": "object",
-    "properties": {
-        "data": true,
-        "children": {
-            "type": "array",
-            "items": {
-                "$dynamicRef": "#node"
-            }
-        }
-    }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/tree-schema.json}
+~~~~~~~~~~
 
 strict-tree schema, guards against misspelled properties:
 
-~~~ json
-{
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://example.com/strict-tree",
-    "$dynamicAnchor": "node",
-
-    "$ref": "tree",
-    "unevaluatedProperties": false
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/strict-tree-schema.json}
+~~~~~~~~~~
 
 input with misspelled field:
 
@@ -4126,55 +3996,15 @@ specific environment in which they are understood.
 
 This meta-schema combines several vocabularies for general use.
 
-~~~ json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/meta/general-use-example",
-  "$dynamicAnchor": "meta",
-  "$vocabulary": {
-    "https://json-schema.org/draft/2020-12/vocab/core": true,
-    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
-    "https://json-schema.org/draft/2020-12/vocab/validation": true,
-    "https://example.com/vocab/example-vocab": true
-  },
-  "allOf": [
-    {"$ref": "https://json-schema.org/draft/2020-12/meta/core"},
-    {"$ref": "https://json-schema.org/draft/2020-12/meta/applicator"},
-    {"$ref": "https://json-schema.org/draft/2020-12/meta/validation"},
-    {"$ref": "https://example.com/meta/example-vocab"}
-  ],
-  "patternProperties": {
-    "^unevaluated": false
-  },
-  "properties": {
-    "localKeyword": {
-      "$comment": "Not in vocabulary, but validated if used",
-      "type": "string"
-    }
-  }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/example-meta-schema.json}
+~~~~~~~~~~
 
 This meta-schema describes only a single extension vocabulary.
 
-~~~ json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/meta/example-vocab",
-  "$dynamicAnchor": "meta",
-  "$vocabulary": {
-    "https://example.com/vocab/example-vocab": true
-  },
-  "type": ["object", "boolean"],
-  "properties": {
-    "minDate": {
-      "type": "string",
-      "pattern": "^\d\d\d\d-\d\d-\d\d$",
-      "format": "date"
-    }
-  }
-}
-~~~
+~~~~~~~~~~
+{::include ./examples/example-vocab-meta-schema.json}
+~~~~~~~~~~
 
 As shown above, even though each of the single-vocabulary meta-schemas
 referenced in the general-use meta-schema's "allOf" declares its
