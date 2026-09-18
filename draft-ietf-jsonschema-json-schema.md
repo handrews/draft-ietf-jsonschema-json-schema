@@ -2507,12 +2507,9 @@ is valid, it is more robust to use the "$id" of the embedded or referenced
 resource unless it is specifically desired to identify the object containing
 the "$ref" in the second (non-embedded) arrangement.
 
-An implementation MAY choose not to support addressing schema resource
-contents by URIs using a base other than the resource's canonical URI,
-plus a JSON Pointer fragment relative to that base.  Were we to require otherwise,
-implementations would have to keep track of a stack of possible base URIs.
-Therefore, schema
-authors SHOULD NOT rely on such URIs, as using them may reduce interoperability.
+Schema authors SHOULD NOT rely on URIs that use a base other than the
+resource's canonical URI.  Implementations may not support them, and
+non-canonical URIs can also be more fragile in the face of refactoring.
 
 Further examples of such non-canonical URI construction, as well as
 the appropriate canonical URI-based fragments to use instead,
