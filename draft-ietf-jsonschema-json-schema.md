@@ -390,7 +390,7 @@ or when one schema resource is embedded in another.  Any such URIs
 with fragments are considered to be non-canonical.
 
 The root schema is always a schema resource, where the
-URI is determined as described in {{initial-base}}.[^1]
+URI is determined as described in {{initial-base}}.
 
 Some keywords take schemas themselves, allowing JSON Schemas to be nested:
 
@@ -665,10 +665,10 @@ object MUST be absolute URIs and each URI MUST be normalized.
 Each URI that appears as a property name identifies a specific set of
 keywords and their semantics.
 
-The URI MAY be a URL, but the nature of the retrievable resource is
-currently undefined, and reserved for future use.  Vocabulary authors
+A vocabulary URI is an identifier.  It MAY be a URL, but if so the nature of the
+retrievable resource is undefined.  Vocabulary authors
 MAY use the URL of the vocabulary specification, in a human-readable
-media type such as text/html or text/plain, as the vocabulary URI.[^2]
+media type such as text/html or text/plain, as the vocabulary URI
 
 The values of the object properties MUST be booleans.
 If the value is true, then implementations that do not recognize
@@ -717,10 +717,12 @@ specification.
 Note that the processing restrictions on "$vocabulary" mean that
 meta-schemas that reference other meta-schemas using "$ref" or
 similar keywords do not automatically inherit the vocabulary
-declarations of those other meta-schemas.  All such declarations
+declarations of those other meta-schemas (so that implementations can
+find all vocabulary requirement information in one place).
+All such declarations
 must be repeated in the root of each schema document intended
 for use as a meta-schema.  This is demonstrated in
-[the example meta-schema](#example-meta-schema).[^3]
+[the example meta-schema](#example-meta-schema).
 
 #### Updates to Meta-Schema and Vocabulary URIs
 
@@ -803,7 +805,7 @@ need for "$dynamicAnchor".
 If present, the value of this keyword MUST be a string and MUST start with
 a letter (\[A-Za-z\]) or underscore ("\_"), followed by any number of letters,
 digits (\[0-9\]), hyphens ("-"), underscores ("\_"), and periods (".").
-This matches the US-ASCII part of XML's NCName production, per {{XMLNS}}.[^5]
+This matches the US-ASCII part of XML's NCName production, per {{XMLNS}}.
 
 The effect of specifying the same fragment name multiple times within
 the same resource, using any combination of "$anchor" and/or
@@ -831,7 +833,7 @@ For an example of `$dynamicAnchor` see {{recursive-example}}.
 ### "$ref" and "$dynamicRef" {#refs}
 
 The "$ref" and "$dynamicRef" keywords are applicator keywords used to
-reference a schema. Their results are the results of the referenced schema.[^6]
+reference a schema. Their results are the results of the referenced schema.
 
 As the values of "$ref" and "$dynamicRef" are URI References, this allows
 the possibility to externalise or divide a schema across multiple files,
@@ -875,7 +877,7 @@ Otherwise, its behavior is identical to "$ref", and no runtime
 resolution is needed.
 
 For an example of `$ref`, see the example of `$anchor` above in {{anchor-example}}.
-For an example of `$dynamicRef`, see {{recursive-example}}.[^7]
+For an example of `$dynamicRef`, see {{recursive-example}}.
 
 ### "$defs" {#defs}
 
@@ -1710,8 +1712,6 @@ When the implementation is configured for assertion behavior, it:
 * MAY choose to implement validation of any or all format attributes
   as a no-op by always producing a validation result of true;
 
-[^16]
-
 ### Format-Assertion Vocabulary
 
 When the Format-Assertion vocabulary is declared with a value of true,
@@ -1991,7 +1991,7 @@ operations by default, and MUST provide the validation result of each
 string-encoded document separately from the enclosing document.  This
 process SHOULD be equivalent to fully evaluating the input against
 the original schema, followed by using the annotations to decode, parse,
-and/or validate each string-encoded document.[^19]
+and/or validate each string-encoded document.
 
 See also the [Security Considerations](#security)
 sections for possible vulnerabilities introduced by automatically
@@ -2507,10 +2507,9 @@ is valid, it is more robust to use the "$id" of the embedded or referenced
 resource unless it is specifically desired to identify the object containing
 the "$ref" in the second (non-embedded) arrangement.
 
-An implementation MAY choose not to support addressing schema resource
-contents by URIs using a base other than the resource's canonical URI,
-plus a JSON Pointer fragment relative to that base.  Therefore, schema
-authors SHOULD NOT rely on such URIs, as using them may reduce interoperability.[^9]
+Schema authors SHOULD NOT rely on URIs that use a base other than the
+resource's canonical URI.  Implementations may not support them, and
+non-canonical URIs can also be more fragile in the face of refactoring.
 
 Further examples of such non-canonical URI construction, as well as
 the appropriate canonical URI-based fragments to use instead,
@@ -2520,7 +2519,9 @@ are provided in {{id-examples}}.
 
 A Compound Schema Document (sometimes called a "bundled" schema)
 has multiple embedded JSON Schema Resources bundled into the same document to
-ease transportation.
+ease transportation. This kind of schema is recognizable by the presence of "$id" outside
+of the document root, since "$id" in a subschema indicates an embedded
+schema resource.
 
 Each embedded Schema Resource MUST be treated as an individual Schema Resource, following standard
 schema loading and processing requirements, including determining vocabulary support.
@@ -2574,7 +2575,7 @@ Given that a Compound Schema Document may have embedded resources which identify
 dialects, these documents SHOULD NOT be validated by applying a meta-schema
 to the Compound Schema Document as an instance. It is RECOMMENDED that an alternate
 validation process be provided in order to validate Schema Documents. Each Schema Resource
-SHOULD be separately validated against its associated meta-schema.[^10]
+SHOULD be separately validated against its associated meta-schema.
 
 A Compound Schema Document in which all embedded resources identify as using the same
 dialect, or in which "$schema" is omitted and therefore defaults to that of the enclosing resource,
@@ -2606,7 +2607,8 @@ structure cannot be reliably implemented, and the resulting behavior
 is undefined.  Similarly, a reference target under a known keyword,
 for which the value is known not to be a schema, results in undefined
 behavior in order to avoid burdening implementations with the need
-to detect such targets.[^11]
+to detect such targets.  See {{security}} for the security implications
+of blindly interpreting targets as schemas.
 
 Note that single-level custom keywords with identical syntax and
 semantics to "$defs" do not allow for any intervening "$id" keywords,
@@ -3069,12 +3071,14 @@ The JSON key for this information is "keywordLocation".
 
 ### Keyword Absolute Location
 
-The absolute, dereferenced location of the validating keyword.  The value MUST
+The absolute, dereferenced location of the validating keyword (where "absolute"
+is used in a different sense than the "absolute-URI" terminology from RFC3986, in that
+the definition does not exclude fragments).  The value MUST
 be expressed as a full URI using the canonical URI of the relevant schema resource
 with a JSON Pointer fragment, and it MUST NOT include by-reference applicators
 such as "$ref" or "$dynamicRef" as non-terminal path components.
 It MAY end in such keywords if the error or annotation is for that
-keyword, such as an unresolvable reference.[^20]
+keyword, such as an unresolvable reference.
 
 ~~~
 https://example.com/schemas/common#/$defs/count/minimum
@@ -3505,6 +3509,14 @@ of that media type or encoding.  For example, the security considerations
 Scripting Media Types ({{?RFC4329}}) apply when
 processing JavaScript or ECMAScript encoded within a JSON string.
 
+Interpreting a reference target as a schema when it is not known to be one
+(see {{non-schemas}}) is analogous to fetching a schema over HTTP but receiving
+a response with a Content-Type other than application/schema+json.  An
+implementation can certainly try to interpret it as a schema, but the origin
+server offered no guarantee that it actually is any such thing.  Therefore,
+interpreting it as such has security implications and may produce
+unpredictable results.
+
 # Interoperability Considerations
 
 
@@ -3641,7 +3653,7 @@ base URIs, and are identifiable by any listed URI in accordance with
 
 Note: The fragment part of the URI does not make it canonical or non-canonical,
 rather, the base URI used (as part of the full URI with any fragment) is what
-determines the canonical nature of the resulting full URI.[^21]
+determines the canonical nature of the resulting full URI.
 
 # Manipulating schema documents and references
 
@@ -4128,67 +4140,6 @@ Compared to the "2020-12" version of JSON Schema, this draft makes the following
 * Reorder conceptually: intro, keywords, processing and output, extensibility.
 * Define input and instance as different things.
 
-
-
-[^1]: Note that documents that embed schemas in another format will not
-      have a root schema resource in this sense.  Exactly how such usages
-      fit with the JSON Schema document and resource concepts will be
-      clarified in a future draft.
-
-[^2]: Vocabulary documents may be added in forthcoming drafts.
-      For now, identifying the keyword set is deemed sufficient as that,
-      along with meta-schema validation, is how the current "vocabularies"
-      work today.  Any future vocabulary document format will be specified
-      with JSON, so using text/html or other non-JSON formats
-      in the meantime will not produce any future ambiguity.
-
-[^3]: This requirement allows implementations to find all vocabulary
-      requirement information in a single place for each meta-schema.
-      As schema extensibility means that there are endless potential
-      ways to combine more fine-grained meta-schemas by reference,
-      requiring implementations to anticipate all possibilities and
-      search for vocabularies in referenced meta-schemas would
-      be overly burdensome.
-
-[^5]: Note that the anchor string does not include the "#" character,
-      as it is not a URI-reference.  An "$anchor": "foo" becomes the
-      fragment "#foo" when used in a URI.  See below for full examples.
-
-[^6]: Note that this definition of how the results are determined means that
-      other keywords can appear alongside of "$ref" in the same schema object.
-
-[^7]: The difference between the hyper-schema meta-schema in pre-2019
-      drafts and in this draft dramatically demonstrates the utility
-      of these keywords.
-
-
-[^9]: This is to avoid requiring implementations to keep track of a whole
-      stack of possible base URIs and JSON Pointer fragments for each,
-      given that all but one will be fragile if the schema resources
-      are reorganized.  Some
-      have argued that this is easy so there is
-      no point in forbidding it, while others have argued that it complicates
-      schema identification and should be forbidden.  Feedback on this
-      topic is encouraged.
-      After some discussion, we feel that we need to remove the use of
-      "canonical" in favour of talking about JSON Pointers which reference
-      across schema resource boundaries as undefined or even forbidden behavior
-      (https://github.com/json-schema-org/json-schema-spec/issues/937,
-      https://github.com/json-schema-org/json-schema-spec/issues/1183)
-
-[^10]: If you know a schema is what's being validated, you can identify if the schemas
-       is a Compound Schema Document or not, by way of use of "$id", which identifies an
-       embedded resource when used not at the document's root.
-
-[^11]: These scenarios are analogous to fetching a schema over HTTP
-       but receiving a response with a Content-Type other than
-       application/schema+json.  An implementation can certainly
-       try to interpret it as a schema, but the origin server
-       offered no guarantee that it actually is any such thing.
-       Therefore, interpreting it as such has security implications
-       and may produce unpredictable results.
-
-
 [^14]: Note that the "type" keyword in this specification defines an "integer" type
        which is not part of the data model. Therefore a format attribute can be
        limited to numbers, but not specifically to integers. However, a numeric
@@ -4201,12 +4152,6 @@ Compared to the "2020-12" version of JSON Schema, this draft makes the following
        the Format-Assertion vocabulary since implementations are not required to
        provide full validation support when the Format-Assertion vocabulary
        is not specified.
-
-[^16]: This matches the current reality of implementations, which provide
-       widely varying levels of validation, including no validation at all,
-       for some or all format attributes.  It is also designed to encourage
-       relying only on the annotation behavior and performing semantic
-       validation in the application, which is the recommended best practice.
 
 [^17]: The expectation is that for simple formats such as date-time, syntactic
        validation will be thorough.  For a complex format such as email addresses,
@@ -4224,18 +4169,3 @@ Compared to the "2020-12" version of JSON Schema, this draft makes the following
        will become more flexible in general, or these will likely
        either be promoted to fully specified attributes or dropped.
 
-[^19]: For now, the exact mechanism of performing and returning parsed
-       data and/or validation results from such an automatic decoding, parsing,
-       and validating feature is left unspecified.  Should such a feature
-       prove popular, it may be specified more thoroughly in a future draft.
-
-[^20]: Note that "absolute" here is in the sense of "absolute filesystem path"
-       (meaning the complete location) rather than the "absolute-URI"
-       terminology from RFC 3986 (meaning with scheme but without fragment).
-       Keyword absolute locations will have a fragment in order to
-       identify the keyword.
-
-[^21]: Multiple "canonical" URIs? We Acknowledge this is potentially confusing, and
-       direct you to read the CREF located in the
-       [JSON Pointer fragments and embedded schema resources](#embedded)
-       section for further comments.
